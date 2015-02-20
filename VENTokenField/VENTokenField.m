@@ -64,6 +64,11 @@ static const CGFloat VENTokenFieldDefaultMaxHeight          = 150.0;
     [self setUpInit];
 }
 
+- (BOOL)isFirstResponder
+{
+    return [self.inputTextField isFirstResponder];
+}
+
 - (BOOL)becomeFirstResponder
 {
     [self layoutTokensAndInputWithFrameAdjustment:YES];
@@ -73,6 +78,7 @@ static const CGFloat VENTokenFieldDefaultMaxHeight          = 150.0;
 
 - (BOOL)resignFirstResponder
 {
+    [super resignFirstResponder];
     return [self.inputTextField resignFirstResponder];
 }
 
@@ -149,6 +155,12 @@ static const CGFloat VENTokenFieldDefaultMaxHeight          = 150.0;
     for (VENToken *token in self.tokens) {
         [token setColorScheme:color];
     }
+}
+
+- (void)setInputTextFieldAccessoryView:(UIView *)inputTextFieldAccessoryView
+{
+    _inputTextFieldAccessoryView = inputTextFieldAccessoryView;
+    self.inputTextField.inputAccessoryView = _inputTextFieldAccessoryView;
 }
 
 - (NSString *)inputText
@@ -388,6 +400,7 @@ static const CGFloat VENTokenFieldDefaultMaxHeight          = 150.0;
         _inputTextField.delegate = self;
         _inputTextField.placeholder = self.placeholderText;
         _inputTextField.accessibilityLabel = self.inputTextFieldAccessibilityLabel ?: NSLocalizedString(@"To", nil);
+        _inputTextField.inputAccessoryView = self.inputTextFieldAccessoryView;
         [_inputTextField addTarget:self action:@selector(inputTextFieldDidChange:) forControlEvents:UIControlEventEditingChanged];
     }
     return _inputTextField;
