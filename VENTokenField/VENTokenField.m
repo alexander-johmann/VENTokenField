@@ -27,7 +27,7 @@
 #import "VENBackspaceTextField.h"
 
 static const CGFloat VENTokenFieldDefaultVerticalInset      = 7.0;
-static const CGFloat VENTokenFieldDefaultHorizontalInset    = 15.0;
+static const CGFloat VENTokenFieldDefaultHorizontalInset    = 0; //15.0;
 static const CGFloat VENTokenFieldDefaultToLabelPadding     = 5.0;
 static const CGFloat VENTokenFieldDefaultTokenPadding       = 2.0;
 static const CGFloat VENTokenFieldDefaultMinInputWidth      = 80.0;
@@ -78,6 +78,7 @@ static const CGFloat VENTokenFieldDefaultMaxHeight          = 150.0;
 
 - (BOOL)resignFirstResponder
 {
+    //NSLog(@"resignFirstResponder");
     [super resignFirstResponder];
     return [self.inputTextField resignFirstResponder];
 }
@@ -214,9 +215,11 @@ static const CGFloat VENTokenFieldDefaultMaxHeight          = 150.0;
     [self layoutTokensWithCurrentX:&currentX currentY:&currentY];
     [self layoutInputTextFieldWithCurrentX:&currentX currentY:&currentY];
 
+    /*
     if (shouldAdjustFrame) {
         [self adjustHeightForCurrentY:currentY];
     }
+    */
 
     [self.scrollView setContentSize:CGSizeMake(self.scrollView.contentSize.width, currentY + [self heightForToken])];
 
@@ -250,11 +253,16 @@ static const CGFloat VENTokenFieldDefaultMaxHeight          = 150.0;
 
 - (void)layoutInputTextFieldWithCurrentX:(CGFloat *)currentX currentY:(CGFloat *)currentY
 {
+
+    CGFloat minimumContentSize = *currentX + self.minInputWidth + 2*self.horizontalInset;
+    if (minimumContentSize < self.scrollView.width) {
+        self.scrollView.contentSize = CGSizeMake(self.scrollView.width-2*self.horizontalInset,*currentY);
+    }
+
     CGFloat inputTextFieldWidth = self.scrollView.contentSize.width - *currentX;
-    if (inputTextFieldWidth < self.minInputWidth) {
-        inputTextFieldWidth = self.scrollView.contentSize.width;
-        *currentY += [self heightForToken];
-        *currentX = 0;
+    if (inputTextFieldWidth < self.minInputWidth || self.scrollView.contentSize.width > self.scrollView.width) {
+        inputTextFieldWidth = self.minInputWidth;
+        self.scrollView.contentSize = CGSizeMake(*currentX+inputTextFieldWidth,*currentY);
     }
 
     VENBackspaceTextField *inputTextField = self.inputTextField;
@@ -309,20 +317,17 @@ static const CGFloat VENTokenFieldDefaultMaxHeight          = 150.0;
         [token setTitleText:[NSString stringWithFormat:@"%@,", title]];
         [self.tokens addObject:token];
 
-        if (*currentX + token.width <= self.scrollView.contentSize.width) { // token fits in current line
-            token.frame = CGRectMake(*currentX, *currentY, token.width, token.height);
-        } else {
-            *currentY += token.height;
-            *currentX = 0;
-            CGFloat tokenWidth = token.width;
-            if (tokenWidth > self.scrollView.contentSize.width) { // token is wider than max width
-                tokenWidth = self.scrollView.contentSize.width;
-            }
-            token.frame = CGRectMake(*currentX, *currentY, tokenWidth, token.height);
-        }
+        token.frame = CGRectMake(*currentX, *currentY, token.width, token.height);
+
         *currentX += token.width + self.tokenPadding;
         [self.scrollView addSubview:token];
     }
+
+    // Ajusting size of scroll view (horizontal scrolling, no line break)
+    if (*currentX > self.scrollView.contentSize.width) {
+        self.scrollView.contentSize = CGSizeMake(*currentX,*currentY);
+    }
+
 }
 
 
@@ -372,6 +377,7 @@ static const CGFloat VENTokenFieldDefaultMaxHeight          = 150.0;
 
 - (void)adjustHeightForCurrentY:(CGFloat)currentY
 {
+    /*
     if (currentY + [self heightForToken] > CGRectGetHeight(self.frame)) { // needs to grow
         if (currentY + [self heightForToken] <= self.maxHeight) {
             [self setHeight:currentY + [self heightForToken] + self.verticalInset * 2];
@@ -385,6 +391,7 @@ static const CGFloat VENTokenFieldDefaultMaxHeight          = 150.0;
             [self setHeight:self.originalHeight];
         }
     }
+    */
 }
 
 - (VENBackspaceTextField *)inputTextField
@@ -431,6 +438,16 @@ static const CGFloat VENTokenFieldDefaultMaxHeight          = 150.0;
     if ([self.delegate respondsToSelector:@selector(tokenField:didChangeText:)]) {
         [self.delegate tokenField:self didChangeText:textField.text];
     }
+
+    // Check if last character is a comma or space, then add token
+    if ([textField.text length] > 0) {
+        NSString *lastChar = [textField.text substringFromIndex:[textField.text length] - 1];
+        if ([lastChar isEqual: @","] || [lastChar isEqual: @" "]) {
+            textField.text = [textField.text substringToIndex: [textField.text length] - 1];
+            [self textFieldShouldReturn:textField];
+        }
+    }
+    
 }
 
 - (void)handleSingleTap:(UITapGestureRecognizer *)gestureRecognizer
